@@ -257,10 +257,10 @@ textarea.field-area::placeholder{color:#bbb;}
 .tex-people-box{background:#fff;border:1px solid #e0e6f5;border-radius:7px;padding:6px 9px;}
 .tex-people-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;}
 .tex-notify-row{display:flex;justify-content:flex-end;margin-top:8px;padding-top:7px;border-top:1px solid #eef0f6;}
-.task-table{width:100%;border-collapse:collapse;table-layout:fixed;}
+.task-table{width:100%;border-collapse:collapse;}
 .task-table thead tr{background:#f8f9fc;}
-.task-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#5a6080;padding:7px 12px;text-align:left;border-bottom:1px solid #eef0f8;white-space:nowrap;overflow:hidden;}
-.task-table td{overflow:hidden;}
+.task-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#5a6080;padding:7px 12px;text-align:left;border-bottom:1px solid #eef0f8;white-space:nowrap;}
+.task-table td{vertical-align:middle;max-width:0;}
 .task-due{border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600;color:#555;background:#f5f7fc;outline:none;}
 .task-due.overdue{background:#fdecea;color:#d93025;border-color:#f5c6c6;}
 .task-due.due-soon{background:#fff3e0;color:#c07000;border-color:#ffd494;}
@@ -272,8 +272,8 @@ textarea.field-area::placeholder{color:#bbb;}
 .task-row:hover{background:#f5f8ff;}.task-row.expanded{background:#f0f6ff;}
 .task-row.tr-done{opacity:.6;}.task-row.tr-done .tr-title{text-decoration:line-through;color:#aaa;}
 .task-row td{padding:7px 10px;font-size:12px;vertical-align:middle;}
-.tr-chk{width:28px;text-align:center;}.tr-title{font-weight:600;min-width:160px;}
-.tr-owner{white-space:nowrap;}.tr-due-cell{white-space:nowrap;font-size:11px;}
+.tr-chk{width:32px;text-align:center;}.tr-title{font-weight:600;}
+.tr-owner{white-space:nowrap;width:110px;}.tr-due-cell{white-space:nowrap;font-size:11px;width:100px;}
 .tr-due-cell.overdue{color:#d93025;font-weight:700;}.tr-due-cell.due-soon{color:#c07000;font-weight:700;}
 .tr-chevron{width:22px;text-align:center;font-size:10px;color:#ccc;user-select:none;}
 .task-expand-row{display:none;background:#f8faff;}
@@ -479,7 +479,7 @@ function newShoutout(){return{person:"",reason:""};}
 let state={
 activeTab:"completed",author:"",team:"",morale:"",
 metrics:[{label:"",value:"",trend:""},{label:"",value:"",trend:""},{label:"",value:"",trend:""}],
-completed:[newItem()],wip:[newItem({pct:50})],upcoming:[newItem()],risks:[newItem()],
+completed:[],wip:[],upcoming:[],risks:[],
 decisions:[newDecision()],shoutouts:[newShoutout()],headcount:"",
 capacity:{Vaishnavi:"Normal",Sergi:"Normal",Sahil:"Normal",Ramesh:"Normal"},
 };
@@ -1326,17 +1326,23 @@ const list=document.getElementById("tasks-list");
 if(!list) return;
 list.innerHTML="";
 
-// Update counts
-const all=state.tasks;
+const all=(state.tasks||[]).filter(t=>t.title&&t.title.trim());
 const pending=all.filter(t=>t.status==="Yet to Start"&&!t.done);
 const inprog=all.filter(t=>t.status==="In Progress");
-const done=all.filter(t=>t.done||t.status==="Done");
-const overdue=all.filter(t=>isOverdue(t.due)&&!t.done&&t.status!=="Done");
-document.getElementById("tc-all").textContent=all.length;
-document.getElementById("tc-pending").textContent=pending.length;
-document.getElementById("tc-inprogress").textContent=inprog.length;
-document.getElementById("tc-done").textContent=done.length;
-document.getElementById("tc-overdue").textContent=overdue.length;
+const done=all.filter(t=>t.done||t.status==="Completed");
+const overdue=all.filter(t=>isOverdue(t.due)&&!t.done&&t.status!=="Completed");
+
+const el1=document.getElementById("tc-all");if(el1)el1.textContent=all.length;
+const el2=document.getElementById("tc-pending");if(el2)el2.textContent=pending.length;
+const el3=document.getElementById("tc-inprogress");if(el3)el3.textContent=inprog.length;
+const el4=document.getElementById("tc-done");if(el4)el4.textContent=done.length;
+const el5=document.getElementById("tc-overdue");if(el5)el5.textContent=overdue.length;
+
+// Update nav badge
+const nb=document.getElementById("nav-task-cnt");if(nb)nb.textContent=all.length;
+
+// Update summary strip
+renderDash();
 
 const filtered=all;
 
@@ -1348,7 +1354,14 @@ list.innerHTML=`<div class="empty-state">No tasks here — click "+ Add Task" to
 const table=document.createElement("table");table.className="task-table";
 const thead=document.createElement("thead");
 thead.innerHTML=`<tr>
-<th></th><th>Task</th><th>Owner</th><th>Priority</th><th>Status</th><th>Due</th><th style="width:24px;"></th><th style="width:28px;"></th>
+<th style="width:32px;"></th>
+<th style="width:auto;min-width:200px;">Task</th>
+<th style="width:110px;">Owner</th>
+<th style="width:90px;">Priority</th>
+<th style="width:110px;">Status</th>
+<th style="width:100px;">Due</th>
+<th style="width:20px;"></th>
+<th style="width:24px;"></th>
 </tr>`;
 table.appendChild(thead);
 const tbody=document.createElement("tbody");
@@ -1374,7 +1387,7 @@ chk.addEventListener("change",e=>{e.stopPropagation();state.tasks[idx].done=chk.
 tdChk.appendChild(chk);tr.appendChild(tdChk);
 
 // Title cell
-const tdTitle=document.createElement("td");tdTitle.className="tr-title";
+const tdTitle=document.createElement("td");tdTitle.className="tr-title";tdTitle.style.cssText="width:100%;max-width:none;";
 const titleInp=document.createElement("input");titleInp.className="tex-inp";titleInp.style.fontWeight="600";titleInp.value=task.title;titleInp.placeholder="Task title…";
 titleInp.addEventListener("click",e=>e.stopPropagation());
 if(isDone){titleInp.readOnly=true;titleInp.style.color="#888";}
@@ -1922,6 +1935,8 @@ renderTasks();
 loadLogo();
 const restored=loadLS();
 boot();
+// Re-render tasks after a tick to ensure DOM is fully ready
+setTimeout(()=>{renderTasks();renderDash();},0);
 if(restored)toast("✅ Data restored from last session");
 </script>
 
